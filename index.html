@@ -61,15 +61,17 @@
   .rel .partner{font-weight:700}
   .rel .verb{font-family:ui-monospace,monospace;font-size:12px;color:var(--info)}
   .rel .meaning{color:var(--mut);font-size:12px;margin-top:2px}
-  .prob{display:flex;gap:10px;padding:11px 0;border-bottom:1px solid var(--line);align-items:flex-start}
-  .prob .sev{font-size:10px;font-weight:800;padding:2px 7px;border-radius:5px;color:#fff;white-space:nowrap;margin-top:2px}
-  .prob .sev.err{background:var(--err)}.prob .sev.warn{background:var(--warn)}.prob .sev.info{background:var(--info)}
-  .prob .body{flex:1}
-  .prob .title{font-weight:700}
-  .prob .det{color:#475569;font-size:12.5px;margin-top:2px}
-  .prob .rule{color:var(--mut);font-size:11px;font-family:ui-monospace,monospace}
-  .prob .act{margin-top:6px}
-  .manual{font-size:11px;color:var(--mut);font-style:italic}
+  .psum{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+  .pchip{font-size:12px;font-weight:700;padding:4px 11px;border-radius:999px;color:#fff}
+  .pchip.err{background:var(--err)}.pchip.warn{background:var(--warn)}.pchip.info{background:var(--info)}
+  .prob{padding:12px 14px;margin-bottom:10px;border:1px solid var(--line);border-radius:10px;background:#fff}
+  .prob .phead{display:flex;align-items:center;gap:8px}
+  .prob .pdot{font-size:13px}
+  .prob .ptitle{font-weight:700;font-size:15px}
+  .prob .pdet{color:#475569;font-size:13.5px;margin:5px 0 0 23px}
+  .prob .pact{margin:10px 0 0 23px}
+  .manual{font-size:12px;color:var(--mut);font-style:italic}
+  button.fix.big{width:100%;justify-content:center;margin-bottom:14px;padding:11px}
   .empty{color:var(--mut);padding:18px 0}
   .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;
     padding:10px 18px;border-radius:10px;font-weight:600;z-index:60;opacity:0;transition:.25s;pointer-events:none}
@@ -262,12 +264,12 @@
     E.forEach(e => {
       const pks = e[2].filter(a => a[2] === 'pk');
       if (pks.length === 0)
-        add('R1-no-pk', 'ERROR', 'Entity has no primary key',
-          `${e[0]} defines no pk field — nothing to reference it by.`, [e[0]], null,
+        add('R1-no-pk', 'ERROR', 'No unique ID',
+          `${e[0]} has no ID field, so individual records can't be referenced.`, [e[0]], null,
           { kind: 'addPK', entity: e[0], field: snake(e[0]) + '_id' });
       else if (pks.length > 1)
-        add('R1-multi-pk', 'WARN', 'Entity has multiple primary keys',
-          `${e[0]} has ${pks.length} pk fields (${pks.map(a => a[0]).join(', ')}).`, [e[0]]);
+        add('R1-multi-pk', 'WARN', 'More than one ID',
+          `${e[0]} has ${pks.length} ID fields (${pks.map(a => a[0]).join(', ')}); there should be one.`, [e[0]]);
     });
 
     // R2: relationship endpoints must exist
@@ -283,14 +285,14 @@
     R.forEach(r => { const k = r[0] + '|' + r[1] + '|' + r[2]; triples[k] = (triples[k] || 0) + 1; });
     Object.entries(triples).filter(([, c]) => c > 1).forEach(([k, c]) => {
       const [f, v, t] = k.split('|');
-      add('R3-dup-triple', 'ERROR', 'Duplicate relationship', `"${f} -${v}-> ${t}" declared ${c} times.`, [f, t],
+      add('R3-dup-triple', 'ERROR', 'Duplicate link', `The ${f} → ${t} link (${v}) is defined ${c} times.`, [f, t],
         [f, v, t], { kind: 'dedupeEdge', rel: [f, v, t] });
     });
 
     // R4: orphan entities (no edge either direction)
     const inRel = new Set(); R.forEach(r => { inRel.add(r[0]); inRel.add(r[2]); });
     E.forEach(e => { if (!inRel.has(e[0]))
-      add('R4-orphan', 'ERROR', 'Orphan entity', `${e[0]} has no relationship in either direction — it stands alone.`, [e[0]]); });
+      add('R4-orphan', 'ERROR', 'Not linked to anything', `${e[0]} has no connections — it stands alone on the diagram.`, [e[0]]); });
 
     // R-domain: entity domain must be a declared domain
     if (domainKeys.size) E.forEach(e => {
@@ -310,8 +312,8 @@
           return;
         }
         if (!hasEdge(e[0], t))
-          add('R5-fk-no-edge', 'ERROR', 'Foreign key with no relationship',
-            `${e[0]}.${a[0]} points to ${t}, but no edge connects ${e[0]} and ${t}. The link is unreachable in the graph.`,
+          add('R5-fk-no-edge', 'ERROR', 'Missing connection',
+            `${e[0]} refers to ${t} (via ${a[0]}), but the two aren't linked — the connection is missing.`,
             [e[0], t], null,
             { kind: 'addEdge', from: e[0], to: t, verb: a[0].replace(/_id$/, '').toUpperCase(), field: a[0] });
       });
@@ -325,10 +327,9 @@
       if (!backed) {
         const derived = cfg.knownDerivedEdges.includes(f + '|' + v + '|' + t);
         add('R6-edge-no-key', derived ? 'INFO' : 'WARN',
-          derived ? 'Derived edge (no stored key)' : 'Relationship with no backing key',
-          `"${f} -${v}-> ${t}" has no foreign key on either side` +
-          (derived ? ' (intentionally traversed via an intermediate).'
-                   : `. In a relational reading the two tables can't be joined; in a graph reading the edge has no key to persist.`),
+          derived ? 'Link is derived, not stored' : 'Link with nothing joining it',
+          derived ? `${f} → ${t} is worked out indirectly; there's no key stored for it.`
+                  : `${f} and ${t} are linked, but no key actually joins them.`,
           [f, t], r,
           derived ? null : { kind: 'addFK', entity: f, field: snake(t) + '_id', target: t });
       }
@@ -340,8 +341,8 @@
       const [f, v, t] = r;
       if (f === t || !names.has(f) || !names.has(t)) return;
       if (cfg.containerVerbs.test(v) && fromHoldsFK(f, t) && !fromHoldsFK(t, f)) {
-        add('R7-reversed-edge', 'ERROR', 'Relationship points the wrong way',
-          `"${f} -${v}-> ${t}" : the verb says ${f} owns/contains ${t}, but ${f} holds the foreign key, so ${t} is the parent. Should be "${t} -${v}-> ${f}".`,
+        add('R7-reversed-edge', 'ERROR', 'Arrow points the wrong way',
+          `The ${f} → ${t} link is backwards. It should be ${t} → ${f}.`,
           [f, t], r, { kind: 'reverseEdge', rel: [f, v, t] });
       }
     });
@@ -351,8 +352,8 @@
     R.forEach(r => { const k = r[0] + '|' + r[2]; (ordered[k] = ordered[k] || []).push(r[1]); });
     Object.entries(ordered).filter(([, vs]) => vs.length > 1).forEach(([k, vs]) => {
       const [f, t] = k.split('|');
-      add('R9-multi-edge', 'INFO', 'Multiple edges between the same pair',
-        `${f} -> ${t} has ${vs.length} edges (${vs.join(', ')}). Legit if they are distinct roles (e.g. uploaded_by / approved_by); otherwise one may be a mislabel.`,
+      add('R9-multi-edge', 'INFO', 'Two links between the same pair',
+        `${f} → ${t} is linked ${vs.length} ways (${vs.join(', ')}). Fine if these are different roles; otherwise one may be a mislabel.`,
         [f, t]);
     });
 
@@ -367,8 +368,8 @@
       }
     });
     if (inverseCount)
-      add('R16-inverse-pairs', 'INFO', 'Redundant inverse relationship pairs',
-        `${inverseCount} relationship pairs are declared in BOTH directions (e.g. HAS_X / X_OF). In a property graph edges traverse both ways, so the inverses inflate the count and must be kept in sync by hand. Distinct semantic relationships ≈ ${R.length - inverseCount}.`,
+      add('R16-inverse-pairs', 'INFO', 'Duplicate two-way links',
+        `${inverseCount} links are defined in both directions, which inflates the count. Real distinct links ≈ ${R.length - inverseCount}.`,
         []);
 
     // ---- ATTRIBUTES / TYPES -------------------------------------------------
@@ -376,8 +377,8 @@
     E.forEach(e => {
       fkFields(e).forEach(a => {
         if (isPolymorphic(e, a[0]))
-          add('R13-polymorphic-fk', 'WARN', 'Polymorphic foreign key',
-            `${e[0]}.${a[0]} (+ ${a[0].replace(/_id$/, '_type')}) references different entity types by a discriminator. It has no relationship edge and can't be integrity-checked; in a graph it should be a typed edge.`,
+          add('R13-polymorphic-fk', 'WARN', 'Flexible link that can\'t be checked',
+            `${e[0]}.${a[0]} can point to several different things, so the system can't verify it automatically.`,
             [e[0]]);
       });
     });
@@ -387,8 +388,8 @@
       e[2].forEach(a => {
         const isList = cfg.idListFields.includes(a[0]) || cfg.idListPattern.test(a[0]);
         if (isList && a[1] === 'string')
-          add('R12-csv-id-list', 'WARN', 'List of IDs stored as a string',
-            `${e[0]}.${a[0]} stores multiple references as one string. No referential integrity, hard to query. Use a junction entity (you already do this with PatternMember).`,
+          add('R12-csv-id-list', 'WARN', 'Many links crammed in one text box',
+            `${e[0]}.${a[0]} packs multiple references into one text field — easy to break, hard to search.`,
             [e[0]]);
       });
     });
@@ -396,28 +397,27 @@
     // R10: money fields typed as generic number/int (one finding per field)
     E.forEach(e => e[2].forEach(a => {
       if ((a[1] === 'number' || a[1] === 'int') && cfg.moneyPattern.test(a[0]))
-        add('R10-money-type', 'WARN', 'Monetary field typed as generic number',
-          `${e[0]}.${a[0]} is "${a[1]}" — a float. Money math (combined ratio) needs exact arithmetic. Use a decimal type.`,
+        add('R10-money-type', 'WARN', 'Money stored imprecisely',
+          `${e[0]}.${a[0]} uses a rough number type — money can round wrong. It should be an exact (decimal) type.`,
           [e[0]], null, { kind: 'setType', entity: e[0], field: a[0], type: 'decimal' });
     }));
 
-    // R11: enum fields with no documented value set (aggregated)
-    const enums = [];
-    E.forEach(e => e[2].forEach(a => {
-      if (a[1] === 'enum' && !(cfg.enumValues[e[0] + '.' + a[0]])) enums.push(e[0] + '.' + a[0]);
-    }));
-    if (enums.length)
-      add('R11-enum-no-values', 'INFO', 'Enum fields with no allowed-value set',
-        `${enums.length} enum fields define no allowed values, so "controlled vocabulary" / status state-machines are unspecified and validation is deferred to runtime. Fields: ${enums.join(', ')}.`,
-        Array.from(new Set(enums.map(m => m.split('.')[0]))));
+    // R11: enum fields with no documented value set (one finding per entity)
+    E.forEach(e => {
+      const fields = e[2].filter(a => a[1] === 'enum' && !cfg.enumValues[e[0] + '.' + a[0]]).map(a => a[0]);
+      if (fields.length)
+        add('R11-enum-no-values', 'INFO', 'Dropdown options not defined',
+          `${fields.length} field${fields.length > 1 ? 's' : ''} accept any value — the allowed options aren't listed: ${fields.join(', ')}.`,
+          [e[0]]);
+    });
 
     // R14: missing standard temporal fields
     E.forEach(e => {
       const f = new Set(e[2].map(a => a[0]));
       const missing = ['created_at', 'updated_at'].filter(t => !f.has(t));
       if (missing.length)
-        add('R14-temporal', 'INFO', 'Missing standard timestamp field',
-          `${e[0]} is missing ${missing.join(', ')} (append-only tables like an audit log may legitimately omit updated_at).`, [e[0]], null,
+        add('R14-temporal', 'INFO', 'Missing timestamps',
+          `${e[0]} doesn't track ${missing.join(' / ')} (an audit log may not need updated_at).`, [e[0]], null,
           { kind: 'addFields', entity: e[0], fields: missing.map(n => ({ name: n, type: 'timestamp' })) });
     });
 
@@ -570,14 +570,14 @@ function relsFor(name){
 }
 function fixLabel(fix){
   switch(fix.kind){
-    case 'reverseEdge': return 'Reverse edge';
-    case 'addEdge': return 'Add edge';
-    case 'addFK': return 'Add FK ' + fix.field;
-    case 'setType': return 'Change to ' + fix.type;
+    case 'reverseEdge': return 'Flip the arrow';
+    case 'addEdge': return 'Add the link';
+    case 'addFK': return 'Add the key';
+    case 'setType': return 'Use exact money type';
     case 'dedupeEdge': return 'Remove duplicate';
-    case 'addFields': return 'Add ' + fix.fields.map(f=>f.name).join(', ');
-    case 'addPK': return 'Add PK ' + fix.field;
-    default: return 'Fix';
+    case 'addFields': return 'Add timestamps';
+    case 'addPK': return 'Add an ID';
+    default: return 'Fix it';
   }
 }
 function renderDetail(){
@@ -591,14 +591,29 @@ function renderDetail(){
       '<div class="rel"><div class="r1"><span class="dir">'+r.dir+'</span><span class="partner">'+r.partner+'</span><span class="verb">'+r.verb+'</span></div><div class="meaning">'+r.meaning+'</div></div>'
     ).join('') : '<div class="empty">No relationships.</div>';
   } else {
-    body = fs.length ? fs.map((f,i)=>{
-      const act = f.fix
-        ? '<div class="act"><button class="fix" data-i="'+i+'">🔧 '+fixLabel(f.fix)+'</button></div>'
-        : '<div class="act"><span class="manual">needs a manual / design decision — no safe auto-fix</span></div>';
-      return '<div class="prob"><span class="sev '+SEV[f.severity]+'">'+f.severity+'</span><div class="body">'+
-        '<div class="title">'+f.title+'</div><div class="det">'+f.detail+'</div>'+
-        '<div class="rule">'+f.rule+'</div>'+act+'</div></div>';
-    }).join('') : '<div class="empty">✅ No problems on this entity.</div>';
+    if(!fs.length){
+      body = '<div class="empty">✅ Nothing to fix here.</div>';
+    } else {
+      const ne=fs.filter(f=>f.severity==='ERROR').length, nw=fs.filter(f=>f.severity==='WARN').length, ni=fs.filter(f=>f.severity==='INFO').length;
+      const nfix=fs.filter(f=>f.fix).length;
+      const chips =
+        (ne?'<span class="pchip err">'+ne+' must-fix</span>':'')+
+        (nw?'<span class="pchip warn">'+nw+' should-fix</span>':'')+
+        (ni?'<span class="pchip info">'+ni+' FYI</span>':'');
+      const fixAllBtn = nfix>1 ? '<button class="fix big" id="fixNode">🔧 Fix the '+nfix+' fixable on '+current+'</button>' : '';
+      const head = '<div class="psum">'+chips+'</div>'+fixAllBtn;
+      const items = fs.map((f,i)=>{
+        const dot = f.severity==='ERROR'?'🔴':f.severity==='WARN'?'🟡':'🔵';
+        const act = f.fix
+          ? '<button class="fix" data-i="'+i+'">🔧 '+fixLabel(f.fix)+'</button>'
+          : '<span class="manual">needs a decision</span>';
+        return '<div class="prob">'+
+          '<div class="phead"><span class="pdot">'+dot+'</span><span class="ptitle">'+f.title+'</span></div>'+
+          '<div class="pdet">'+f.detail+'</div>'+
+          '<div class="pact">'+act+'</div></div>';
+      }).join('');
+      body = head + items;
+    }
   }
   document.getElementById('detail').innerHTML=
     '<div class="dt-head"><h3>'+current+'</h3><button class="x" id="dtx">×</button></div>'+
@@ -612,6 +627,13 @@ function renderDetail(){
   document.querySelectorAll('.prob .fix').forEach(b=>b.onclick=()=>{
     const f = fs[+b.dataset.i]; applyFix(f.fix); detailTab='problems'; renderAll(); toast('Fixed: '+f.title);
   });
+  const fn = document.getElementById('fixNode');
+  if(fn) fn.onclick=()=>{ applyFixesForNode(current); detailTab='problems'; renderAll(); };
+}
+function applyFixesForNode(name){
+  const order={addPK:0,setType:1,addFields:2,reverseEdge:3,dedupeEdge:4,addEdge:5,addFK:6};
+  const fixes = V.findingsForNode(FINDINGS,name).filter(f=>f.fix).map(f=>f.fix).sort((a,b)=>order[a.kind]-order[b.kind]);
+  const n=fixes.length; fixes.forEach(applyFix); toast('Fixed '+n+' on '+name);
 }
 function openDetail(name){ current=name; detailTab='rels'; document.getElementById('overlay').hidden=false; renderDetail(); }
 function closeDetail(){ document.getElementById('overlay').hidden=true; current=null; }
