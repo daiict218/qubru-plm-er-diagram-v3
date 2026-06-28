@@ -1,0 +1,672 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Qubru PLM Data Model v3 — Validated Explorer</title>
+<style>
+  :root{--ink:#0f172a;--mut:#64748b;--line:#e2e8f0;--bg:#f8fafc;--card:#fff;
+        --err:#dc2626;--warn:#d97706;--info:#2563eb;--ok:#16a34a;}
+  *{box-sizing:border-box}
+  body{margin:0;font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;color:var(--ink);background:var(--bg)}
+  header.toolbar{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:16px;
+    padding:12px 20px;background:#fff;border-bottom:1px solid var(--line);flex-wrap:wrap}
+  .brand{font-weight:700;font-size:15px}
+  .brand small{display:block;font-weight:400;color:var(--mut);font-size:12px}
+  .actions{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap}
+  button{font:inherit;cursor:pointer;border:1px solid var(--line);background:#fff;color:var(--ink);
+    padding:7px 13px;border-radius:8px;font-weight:600}
+  button:hover{background:#f1f5f9}
+  button.primary{background:var(--ink);color:#fff;border-color:var(--ink)}
+  button.primary:hover{filter:brightness(1.15)}
+  button.fix{padding:4px 10px;font-size:12px;border-color:var(--ok);color:var(--ok)}
+  button.fix:hover{background:#f0fdf4}
+  button.fixall{border-color:var(--ok);color:var(--ok)}
+  .summary{display:flex;gap:10px;align-items:center;padding:10px 20px;flex-wrap:wrap;font-weight:600}
+  .chip{padding:4px 11px;border-radius:999px;color:#fff;font-size:12px}
+  .chip.err{background:var(--err)} .chip.warn{background:var(--warn)} .chip.info{background:var(--info)} .chip.ok{background:var(--ok)}
+  .note{color:var(--mut);font-weight:400;font-size:12px}
+  .cards{padding:8px 20px 60px}
+  .domain h2{display:flex;align-items:center;gap:8px;font-size:15px;margin:22px 0 10px}
+  .tag{width:12px;height:12px;border-radius:3px;display:inline-block}
+  .domain .cnt{color:var(--mut);font-weight:400}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px}
+  .card{background:var(--card);border:1px solid var(--line);border-left:4px solid var(--c,#999);
+    border-radius:10px;padding:11px 13px;cursor:pointer;transition:.12s}
+  .card:hover{box-shadow:0 4px 14px rgba(2,6,23,.09);transform:translateY(-1px)}
+  .card .top{display:flex;justify-content:space-between;align-items:center;gap:6px}
+  .card b{font-size:14px}
+  .badge{font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;color:#fff}
+  .badge.err{background:var(--err)} .badge.warn{background:var(--warn)} .badge.info{background:var(--info)} .badge.ok{background:var(--ok)}
+  .fields{margin-top:8px;max-height:138px;overflow:auto}
+  .attr{display:flex;align-items:center;gap:6px;font-size:12px;color:#334155;padding:1px 0}
+  .attr .nm{font-family:ui-monospace,Menlo,monospace}
+  .attr .ty{margin-left:auto;color:var(--mut);font-size:11px}
+  .pill{font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px}
+  .pill.pk{background:#fef3c7;color:#92400e}.pill.fk{background:#dbeafe;color:#1e40af}
+  .overlay{position:fixed;inset:0;background:rgba(2,6,23,.45);display:flex;justify-content:flex-end;z-index:40}
+  .overlay[hidden]{display:none}
+  .detail{width:min(560px,100%);height:100%;background:#fff;overflow:auto;box-shadow:-8px 0 30px rgba(2,6,23,.2)}
+  .dt-head{position:sticky;top:0;background:#fff;border-bottom:1px solid var(--line);padding:16px 20px;display:flex;align-items:flex-start;gap:10px}
+  .dt-head h3{margin:0;font-size:18px}
+  .dt-head .x{margin-left:auto;border:none;background:none;font-size:20px;padding:0 4px}
+  .dt-mean{padding:12px 20px;color:#475569;font-size:13px;border-bottom:1px solid var(--line)}
+  .tabs{display:flex;gap:4px;padding:10px 20px 0}
+  .tabs button{border:none;border-bottom:2px solid transparent;border-radius:0;padding:8px 10px;color:var(--mut);background:none}
+  .tabs button.active{color:var(--ink);border-bottom-color:var(--ink)}
+  .tabbody{padding:14px 20px 40px}
+  .rel{padding:9px 0;border-bottom:1px solid var(--line)}
+  .rel .r1{display:flex;align-items:center;gap:7px}
+  .rel .dir{font-weight:700;color:var(--mut)}
+  .rel .partner{font-weight:700}
+  .rel .verb{font-family:ui-monospace,monospace;font-size:12px;color:var(--info)}
+  .rel .meaning{color:var(--mut);font-size:12px;margin-top:2px}
+  .prob{display:flex;gap:10px;padding:11px 0;border-bottom:1px solid var(--line);align-items:flex-start}
+  .prob .sev{font-size:10px;font-weight:800;padding:2px 7px;border-radius:5px;color:#fff;white-space:nowrap;margin-top:2px}
+  .prob .sev.err{background:var(--err)}.prob .sev.warn{background:var(--warn)}.prob .sev.info{background:var(--info)}
+  .prob .body{flex:1}
+  .prob .title{font-weight:700}
+  .prob .det{color:#475569;font-size:12.5px;margin-top:2px}
+  .prob .rule{color:var(--mut);font-size:11px;font-family:ui-monospace,monospace}
+  .prob .act{margin-top:6px}
+  .manual{font-size:11px;color:var(--mut);font-style:italic}
+  .empty{color:var(--mut);padding:18px 0}
+  .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;
+    padding:10px 18px;border-radius:10px;font-weight:600;z-index:60;opacity:0;transition:.25s;pointer-events:none}
+  .toast.show{opacity:1}
+  html{-webkit-text-size-adjust:100%}
+  @media (max-width:640px){
+    header.toolbar{padding:10px 14px;gap:8px}
+    .brand{font-size:14px}
+    .actions{width:100%;margin-left:0;display:grid;grid-template-columns:1fr 1fr;gap:8px}
+    .actions button{width:100%;padding:11px 10px}   /* full-width, tappable */
+    .summary{padding:10px 14px;font-size:13px}
+    .cards{padding:6px 14px 70px}
+    .grid{grid-template-columns:1fr;gap:10px}
+    .fields{max-height:none}                          /* no nested scroll on phone */
+    .detail{width:100%}
+    .dt-head{padding:14px 16px}
+    .dt-head h3{font-size:17px}
+    .dt-head .x{font-size:30px;line-height:1;padding:0 6px}
+    .tabbody{padding:14px 16px 60px}
+    .tabs button{padding:10px 12px}
+    button.fix{padding:9px 14px;font-size:13px}        /* easy to tap */
+    .prob .det{font-size:13px}
+  }
+</style>
+</head>
+<body>
+<header class="toolbar">
+  <div class="brand">Qubru PLM Data Model v3 <small>Validated Explorer · deterministic checker built-in</small></div>
+  <div class="actions">
+    <button id="btnValidate" class="primary">✓ Validate</button>
+    <button id="btnFixAll" class="fixall">⚡ Fix all auto-fixable</button>
+    <button id="btnExport">⬇ Export model</button>
+    <button id="btnReport">⬇ Export report</button>
+    <button id="btnReset">↺ Reset</button>
+  </div>
+</header>
+<div class="summary" id="summary"></div>
+<div class="cards" id="cards"></div>
+
+<div class="overlay" id="overlay" hidden>
+  <div class="detail" id="detail"></div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>/**
+ * Qubru Graph / Data-Model Validator
+ * -----------------------------------
+ * Deterministic, dependency-free validator for the Qubru PLM data model
+ * (the `E` entities, `R` relationships, `DOMAINS` arrays embedded in the
+ * data-model explorer HTML files).
+ *
+ * WHY THIS EXISTS
+ *   The explorer's "Problems" panel used to read from three hand-typed
+ *   arrays (FIELD_Q / NO_KEY_RELS / PLAIN). In v3 they were shipped EMPTY,
+ *   so every node falsely showed "no problems". This validator computes
+ *   every finding from the model data itself — same input, same output,
+ *   every run. No AI, no hand-maintained lists.
+ *
+ * USAGE (CLI)
+ *   node graph-validator.js <path-to-explorer.html | model.json>
+ *   node graph-validator.js <file> --json        # machine-readable output
+ *   node graph-validator.js <file> --errors-only # only ERROR severity
+ *   Exit code: 0 if no ERRORs, 1 if any ERROR found (CI-friendly).
+ *
+ * USAGE (browser / module)
+ *   const { validateGraph } = require('./graph-validator.js');
+ *   const findings = validateGraph({ E, R, DOMAINS });
+ *   // each finding: { rule, severity, title, detail, nodes:[...], rel? }
+ *
+ * The SAME validateGraph() can be embedded in the explorer so clicking a
+ * node shows live-computed problems for that node (findings whose
+ * `nodes` array includes the node name).
+ */
+(function (root, factory) {
+  if (typeof module !== 'undefined' && module.exports) module.exports = factory();
+  else root.QubruGraphValidator = factory();
+})(typeof self !== 'undefined' ? self : this, function () {
+  'use strict';
+
+  // ---------------------------------------------------------------------------
+  // CONFIG — every exception is explicit and visible. Nothing is hidden by
+  // default; allowlists only *downgrade* a finding's severity, never suppress.
+  // ---------------------------------------------------------------------------
+  const DEFAULT_CONFIG = {
+    // Irregular entity -> snake_case (auto-snake handles the rest).
+    snakeOverrides: { UWRuleset: 'uw_ruleset' },
+
+    // FK stem -> entity, for abbreviations the suffix-matcher can't infer.
+    fkAliases: {
+      txn: 'PolicyTransaction',
+      reference_doc: 'ReferenceDocument',
+      audit: 'AuditEntry',
+      resolution: 'DatasetResolution',
+      classification: 'DocumentClassification',
+      provenance: 'ProvenanceNode',
+    },
+
+    // Verbs that assert "from OWNS/CONTAINS to" — if the *from* side holds the
+    // FK, the edge points child->parent and the verb reads backwards.
+    containerVerbs: /^(HAS_|CONTAINS_|OWNS_|INCLUDES_|GOVERNS$|MANAGES$)/,
+
+    // Money-ish field name fragments; flagged when typed as generic number/int.
+    moneyPattern: /(premium|amount|_rate$|^.*_rate$|cost|payable|incurred|reserve|sublimit|deductible_value|settled|claimed|paid_amount|reserved_amount|tax_amount|allocated_premium|earned_premium|written_premium|gross_premium|net_payable|limit_amount|outcome_value|baseline_value|contribution_value|premium_impact|premium_before|premium_after|premium_adjustment|estimated_repair_cost|actual_repair_cost)/,
+
+    // Fields that store lists of IDs as a single string (CSV anti-pattern).
+    idListFields: [
+      'input_artifacts', 'input_signals', 'signals_used',
+      'artifact_ids', 'signal_ids', 'agent_output_ids',
+    ],
+    // …plus anything matching this is auto-detected as an ID-list:
+    idListPattern: /_ids$/,
+
+    // Edges that are intentionally derived (traversed via an intermediate, no
+    // stored key). Listed here they are reported as INFO instead of WARN.
+    // Format: "From|VERB|To". Empty by default = show everything as WARN.
+    knownDerivedEdges: [],
+
+    // Optional registry of enum value-sets. Fields absent here are flagged as
+    // "no documented allowed values". Empty = flag all enums (aggregated).
+    enumValues: {},
+  };
+
+  // ---------------------------------------------------------------------------
+  // helpers
+  // ---------------------------------------------------------------------------
+  function autoSnake(name, cfg) {
+    if (cfg.snakeOverrides[name]) return cfg.snakeOverrides[name];
+    return name.replace(/([a-z0-9])([A-Z])/g, '$1_$2').toLowerCase();
+  }
+
+  function buildResolver(E, cfg) {
+    const entityNames = E.map(e => e[0]);
+    // stem(snake or alias) -> entity, used as suffix candidates
+    const stems = [];
+    entityNames.forEach(n => stems.push([autoSnake(n, cfg), n]));
+    Object.entries(cfg.fkAliases).forEach(([stem, ent]) => stems.push([stem, ent]));
+    // longest stem first so the most specific suffix wins
+    stems.sort((a, b) => b[0].length - a[0].length);
+
+    return function resolveFK(field) {
+      const stem = field.replace(/_id$/, '');
+      for (const [s, ent] of stems) {
+        if (stem === s || stem.endsWith('_' + s)) return ent;
+      }
+      return null; // unresolved
+    };
+  }
+
+  function fkFields(ent) {
+    return ent[2].filter(a => a[2] === 'fk');
+  }
+  function isPolymorphic(ent, field) {
+    const typeField = field.replace(/_id$/, '_type');
+    return ent[2].some(a => a[0] === typeField);
+  }
+
+  // ---------------------------------------------------------------------------
+  // main
+  // ---------------------------------------------------------------------------
+  function validateGraph(model, userConfig) {
+    const cfg = Object.assign({}, DEFAULT_CONFIG, userConfig || {});
+    const E = model.E || [];
+    const R = model.R || [];
+    const DOMAINS = model.DOMAINS || [];
+
+    const findings = [];
+    const add = (rule, severity, title, detail, nodes, rel, fix) =>
+      findings.push({ rule, severity, title, detail, nodes: nodes || [], rel: rel || null, fix: fix || null });
+    const snake = n => autoSnake(n, cfg);
+
+    const names = new Set(E.map(e => e[0]));
+    const byName = {}; E.forEach(e => (byName[e[0]] = e));
+    const domainKeys = new Set(DOMAINS.map(d => d.key));
+    const resolveFK = buildResolver(E, cfg);
+
+    const fkTargets = name => {
+      const e = byName[name]; if (!e) return [];
+      return fkFields(e)
+        .filter(a => !isPolymorphic(e, a[0]))
+        .map(a => resolveFK(a[0]))
+        .filter(Boolean);
+    };
+    const fromHoldsFK = (from, to) => fkTargets(from).includes(to);
+    const edgePair = new Set();
+    R.forEach(r => { edgePair.add(r[0] + '|' + r[2]); edgePair.add(r[2] + '|' + r[0]); });
+    const hasEdge = (a, b) => edgePair.has(a + '|' + b);
+
+    // ---- STRUCTURE ----------------------------------------------------------
+    // R1: exactly one PK per entity
+    E.forEach(e => {
+      const pks = e[2].filter(a => a[2] === 'pk');
+      if (pks.length === 0)
+        add('R1-no-pk', 'ERROR', 'Entity has no primary key',
+          `${e[0]} defines no pk field — nothing to reference it by.`, [e[0]], null,
+          { kind: 'addPK', entity: e[0], field: snake(e[0]) + '_id' });
+      else if (pks.length > 1)
+        add('R1-multi-pk', 'WARN', 'Entity has multiple primary keys',
+          `${e[0]} has ${pks.length} pk fields (${pks.map(a => a[0]).join(', ')}).`, [e[0]]);
+    });
+
+    // R2: relationship endpoints must exist
+    R.forEach(r => {
+      if (!names.has(r[0])) add('R2-bad-endpoint', 'ERROR', 'Relationship from a non-existent entity',
+        `"${r[0]} -${r[1]}-> ${r[2]}" : "${r[0]}" is not in the entity list.`, [r[0], r[2]], r);
+      if (!names.has(r[2])) add('R2-bad-endpoint', 'ERROR', 'Relationship to a non-existent entity',
+        `"${r[0]} -${r[1]}-> ${r[2]}" : "${r[2]}" is not in the entity list.`, [r[0], r[2]], r);
+    });
+
+    // R3: duplicate relationship triples
+    const triples = {};
+    R.forEach(r => { const k = r[0] + '|' + r[1] + '|' + r[2]; triples[k] = (triples[k] || 0) + 1; });
+    Object.entries(triples).filter(([, c]) => c > 1).forEach(([k, c]) => {
+      const [f, v, t] = k.split('|');
+      add('R3-dup-triple', 'ERROR', 'Duplicate relationship', `"${f} -${v}-> ${t}" declared ${c} times.`, [f, t],
+        [f, v, t], { kind: 'dedupeEdge', rel: [f, v, t] });
+    });
+
+    // R4: orphan entities (no edge either direction)
+    const inRel = new Set(); R.forEach(r => { inRel.add(r[0]); inRel.add(r[2]); });
+    E.forEach(e => { if (!inRel.has(e[0]))
+      add('R4-orphan', 'ERROR', 'Orphan entity', `${e[0]} has no relationship in either direction — it stands alone.`, [e[0]]); });
+
+    // R-domain: entity domain must be a declared domain
+    if (domainKeys.size) E.forEach(e => {
+      if (!domainKeys.has(e[1]))
+        add('R-domain', 'ERROR', 'Entity in undeclared domain', `${e[0]} is in domain "${e[1]}" which is not in DOMAINS.`, [e[0]]);
+    });
+
+    // ---- KEYS <-> EDGES -----------------------------------------------------
+    // R5: every FK field needs a relationship edge to its target
+    E.forEach(e => {
+      fkFields(e).forEach(a => {
+        if (isPolymorphic(e, a[0])) return;
+        const t = resolveFK(a[0]);
+        if (!t) {
+          add('R15-unknown-fk', 'ERROR', 'FK target cannot be resolved',
+            `${e[0]}.${a[0]} is a foreign key but no entity name matches it.`, [e[0]]);
+          return;
+        }
+        if (!hasEdge(e[0], t))
+          add('R5-fk-no-edge', 'ERROR', 'Foreign key with no relationship',
+            `${e[0]}.${a[0]} points to ${t}, but no edge connects ${e[0]} and ${t}. The link is unreachable in the graph.`,
+            [e[0], t], null,
+            { kind: 'addEdge', from: e[0], to: t, verb: a[0].replace(/_id$/, '').toUpperCase(), field: a[0] });
+      });
+    });
+
+    // R6: every edge needs a key on at least one endpoint
+    R.forEach(r => {
+      const [f, v, t] = r;
+      if (!names.has(f) || !names.has(t)) return; // already R2
+      const backed = f === t ? fromHoldsFK(f, t) : (fromHoldsFK(f, t) || fromHoldsFK(t, f));
+      if (!backed) {
+        const derived = cfg.knownDerivedEdges.includes(f + '|' + v + '|' + t);
+        add('R6-edge-no-key', derived ? 'INFO' : 'WARN',
+          derived ? 'Derived edge (no stored key)' : 'Relationship with no backing key',
+          `"${f} -${v}-> ${t}" has no foreign key on either side` +
+          (derived ? ' (intentionally traversed via an intermediate).'
+                   : `. In a relational reading the two tables can't be joined; in a graph reading the edge has no key to persist.`),
+          [f, t], r,
+          derived ? null : { kind: 'addFK', entity: f, field: snake(t) + '_id', target: t });
+      }
+    });
+
+    // ---- DIRECTION / SEMANTICS ---------------------------------------------
+    // R7/R8: ownership verb but the from-side holds the FK => reversed edge
+    R.forEach(r => {
+      const [f, v, t] = r;
+      if (f === t || !names.has(f) || !names.has(t)) return;
+      if (cfg.containerVerbs.test(v) && fromHoldsFK(f, t) && !fromHoldsFK(t, f)) {
+        add('R7-reversed-edge', 'ERROR', 'Relationship points the wrong way',
+          `"${f} -${v}-> ${t}" : the verb says ${f} owns/contains ${t}, but ${f} holds the foreign key, so ${t} is the parent. Should be "${t} -${v}-> ${f}".`,
+          [f, t], r, { kind: 'reverseEdge', rel: [f, v, t] });
+      }
+    });
+
+    // R9: multiple edges on the same ordered pair (review — may be legit roles)
+    const ordered = {};
+    R.forEach(r => { const k = r[0] + '|' + r[2]; (ordered[k] = ordered[k] || []).push(r[1]); });
+    Object.entries(ordered).filter(([, vs]) => vs.length > 1).forEach(([k, vs]) => {
+      const [f, t] = k.split('|');
+      add('R9-multi-edge', 'INFO', 'Multiple edges between the same pair',
+        `${f} -> ${t} has ${vs.length} edges (${vs.join(', ')}). Legit if they are distinct roles (e.g. uploaded_by / approved_by); otherwise one may be a mislabel.`,
+        [f, t]);
+    });
+
+    // R16: redundant inverse pairs (both A->B and B->A defined)
+    const dirSet = new Set(R.map(r => r[0] + '|' + r[2]));
+    const seenPair = new Set(); let inverseCount = 0; const inverseList = [];
+    R.forEach(r => {
+      const [f, , t] = r; if (f === t) return;
+      if (dirSet.has(t + '|' + f)) {
+        const key = [f, t].sort().join('::');
+        if (!seenPair.has(key)) { seenPair.add(key); inverseCount++; inverseList.push(f + ' <-> ' + t); }
+      }
+    });
+    if (inverseCount)
+      add('R16-inverse-pairs', 'INFO', 'Redundant inverse relationship pairs',
+        `${inverseCount} relationship pairs are declared in BOTH directions (e.g. HAS_X / X_OF). In a property graph edges traverse both ways, so the inverses inflate the count and must be kept in sync by hand. Distinct semantic relationships ≈ ${R.length - inverseCount}.`,
+        []);
+
+    // ---- ATTRIBUTES / TYPES -------------------------------------------------
+    // R13: polymorphic FK (type + id) with no real edge / constraint
+    E.forEach(e => {
+      fkFields(e).forEach(a => {
+        if (isPolymorphic(e, a[0]))
+          add('R13-polymorphic-fk', 'WARN', 'Polymorphic foreign key',
+            `${e[0]}.${a[0]} (+ ${a[0].replace(/_id$/, '_type')}) references different entity types by a discriminator. It has no relationship edge and can't be integrity-checked; in a graph it should be a typed edge.`,
+            [e[0]]);
+      });
+    });
+
+    // R12: ID-list stored as a CSV string
+    E.forEach(e => {
+      e[2].forEach(a => {
+        const isList = cfg.idListFields.includes(a[0]) || cfg.idListPattern.test(a[0]);
+        if (isList && a[1] === 'string')
+          add('R12-csv-id-list', 'WARN', 'List of IDs stored as a string',
+            `${e[0]}.${a[0]} stores multiple references as one string. No referential integrity, hard to query. Use a junction entity (you already do this with PatternMember).`,
+            [e[0]]);
+      });
+    });
+
+    // R10: money fields typed as generic number/int (one finding per field)
+    E.forEach(e => e[2].forEach(a => {
+      if ((a[1] === 'number' || a[1] === 'int') && cfg.moneyPattern.test(a[0]))
+        add('R10-money-type', 'WARN', 'Monetary field typed as generic number',
+          `${e[0]}.${a[0]} is "${a[1]}" — a float. Money math (combined ratio) needs exact arithmetic. Use a decimal type.`,
+          [e[0]], null, { kind: 'setType', entity: e[0], field: a[0], type: 'decimal' });
+    }));
+
+    // R11: enum fields with no documented value set (aggregated)
+    const enums = [];
+    E.forEach(e => e[2].forEach(a => {
+      if (a[1] === 'enum' && !(cfg.enumValues[e[0] + '.' + a[0]])) enums.push(e[0] + '.' + a[0]);
+    }));
+    if (enums.length)
+      add('R11-enum-no-values', 'INFO', 'Enum fields with no allowed-value set',
+        `${enums.length} enum fields define no allowed values, so "controlled vocabulary" / status state-machines are unspecified and validation is deferred to runtime. Fields: ${enums.join(', ')}.`,
+        Array.from(new Set(enums.map(m => m.split('.')[0]))));
+
+    // R14: missing standard temporal fields
+    E.forEach(e => {
+      const f = new Set(e[2].map(a => a[0]));
+      const missing = ['created_at', 'updated_at'].filter(t => !f.has(t));
+      if (missing.length)
+        add('R14-temporal', 'INFO', 'Missing standard timestamp field',
+          `${e[0]} is missing ${missing.join(', ')} (append-only tables like an audit log may legitimately omit updated_at).`, [e[0]], null,
+          { kind: 'addFields', entity: e[0], fields: missing.map(n => ({ name: n, type: 'timestamp' })) });
+    });
+
+    // stable sort: ERROR, WARN, INFO then rule id
+    const order = { ERROR: 0, WARN: 1, INFO: 2 };
+    findings.sort((a, b) => (order[a.severity] - order[b.severity]) || a.rule.localeCompare(b.rule));
+    return findings;
+  }
+
+  // findings relevant to a single node — used by the explorer's per-node panel
+  function findingsForNode(findings, nodeName) {
+    return findings.filter(f => f.nodes.includes(nodeName));
+  }
+
+  return { validateGraph, findingsForNode, DEFAULT_CONFIG };
+});
+
+// ---------------------------------------------------------------------------
+// CLI
+// ---------------------------------------------------------------------------
+if (typeof require !== 'undefined' && require.main === module) {
+  const fs = require('fs');
+  const { validateGraph } = module.exports;
+  const args = process.argv.slice(2);
+  const file = args.find(a => !a.startsWith('--'));
+  const asJson = args.includes('--json');
+  const errorsOnly = args.includes('--errors-only');
+
+  if (!file) {
+    console.error('usage: node graph-validator.js <explorer.html | model.json> [--json] [--errors-only]');
+    process.exit(2);
+  }
+
+  // ---- extract the model (E / R / DOMAINS) from HTML or JSON ----
+  function balancedArray(src, name) {
+    const m = src.indexOf('const ' + name + '=');
+    if (m < 0) return null;
+    let i = src.indexOf('[', m); const start = i;
+    let depth = 0, q = null, esc = false;
+    for (; i < src.length; i++) {
+      const c = src[i];
+      if (esc) { esc = false; continue; }
+      if (q) { if (c === '\\') esc = true; else if (c === q) q = null; continue; }
+      if (c === '"' || c === "'" || c === '`') { q = c; continue; }
+      if (c === '[') depth++;
+      else if (c === ']') { depth--; if (depth === 0) { return src.slice(start, i + 1); } }
+    }
+    return null;
+  }
+  function loadModel(path) {
+    const raw = fs.readFileSync(path, 'utf8');
+    if (path.endsWith('.json')) return JSON.parse(raw);
+    const out = {};
+    ['E', 'R', 'DOMAINS'].forEach(n => {
+      const lit = balancedArray(raw, n);
+      if (lit) out[n] = (0, eval)('(' + lit + ')'); // trusted local file, array literal
+    });
+    if (!out.E || !out.R) throw new Error('Could not find E / R arrays in ' + path);
+    return out;
+  }
+
+  let model;
+  try { model = loadModel(file); }
+  catch (err) { console.error('Failed to load model: ' + err.message); process.exit(2); }
+
+  let findings = validateGraph(model);
+  if (errorsOnly) findings = findings.filter(f => f.severity === 'ERROR');
+
+  const counts = findings.reduce((m, f) => ((m[f.severity] = (m[f.severity] || 0) + 1), m), {});
+
+  if (asJson) {
+    console.log(JSON.stringify({
+      file, entities: (model.E || []).length, relationships: (model.R || []).length,
+      counts, findings,
+    }, null, 2));
+  } else {
+    const C = { ERROR: '\x1b[31m', WARN: '\x1b[33m', INFO: '\x1b[36m', reset: '\x1b[0m', dim: '\x1b[2m' };
+    console.log(`\nQubru Graph Validator  —  ${file}`);
+    console.log(`${(model.E || []).length} entities · ${(model.R || []).length} relationships\n`);
+    let last = null;
+    findings.forEach((f, idx) => {
+      if (f.severity !== last) { console.log(`${C[f.severity]}── ${f.severity} ──${C.reset}`); last = f.severity; }
+      console.log(`${C[f.severity]}${String(idx + 1).padStart(2)}. [${f.rule}] ${f.title}${C.reset}`);
+      console.log(`    ${f.detail}`);
+      if (f.nodes.length) console.log(`    ${C.dim}nodes: ${f.nodes.join(', ')}${C.reset}`);
+    });
+    console.log(`\nSUMMARY: ${counts.ERROR || 0} error(s), ${counts.WARN || 0} warning(s), ${counts.INFO || 0} info`);
+    console.log(counts.ERROR ? `${C.ERROR}FAIL — errors must be fixed.${C.reset}\n` : `${C.WARN || ''}No structural errors.${C.reset}\n`);
+  }
+  process.exit(counts.ERROR ? 1 : 0);
+}
+</script>
+<script>
+const BOOT = {"E":[["Party","party",[["party_id","uuid","pk"],["party_type","enum"],["legal_name","string"],["display_name","string"],["id_type","string"],["id_number","string"],["country","string"],["date_of_birth","date"],["date_of_incorporation","date"],["email","string"],["phone","string"],["address_line","string"],["city","string"],["state_province","string"],["postal_code","string"],["status","enum"],["merged_into_party_id","uuid","fk"],["created_at","timestamp"],["updated_at","timestamp"]]],["PartyRelationship","party",[["party_relationship_id","uuid","pk"],["from_party_id","uuid","fk"],["to_party_id","uuid","fk"],["relationship_type","enum"],["title","string"],["since_date","date"],["until_date","date"],["status","enum"],["created_at","timestamp"],["updated_at","timestamp"]]],["Account","party",[["account_id","uuid","pk"],["party_id","uuid","fk"],["broker_id","uuid","fk"],["account_name","string"],["account_type","enum"],["segment","string"],["since_date","date"],["status","enum"],["account_executive_actor_id","uuid","fk"],["notes","string"],["created_at","timestamp"],["updated_at","timestamp"]]],["Insured","party",[["insured_id","uuid","pk"],["party_id","uuid","fk"],["account_id","uuid","fk"],["insured_type","enum"],["since_date","date"],["status","enum"],["created_at","timestamp"],["updated_at","timestamp"]]],["Broker","party",[["broker_id","uuid","pk"],["party_id","uuid","fk"],["broker_code","string"],["license_number","string"],["license_expiry","date"],["channel_type","enum"],["status","enum"],["since_date","date"],["commission_tier","string"],["created_at","timestamp"],["updated_at","timestamp"]]],["Actor","party",[["actor_id","uuid","pk"],["party_id","uuid","fk"],["actor_kind","enum"],["role","enum"],["display_name","string"],["model","string"],["model_version","string"],["status","enum"],["created_at","timestamp"],["updated_at","timestamp"]]],["Product","product",[["product_id","uuid","pk"],["product_code","string"],["name","string"],["line","enum"],["sub_line","string"],["jurisdiction","string"],["regulator_approval_code","string"],["description","string"],["status","enum"],["created_at","timestamp"],["updated_at","timestamp"]]],["ProductVersion","product",[["product_version_id","uuid","pk"],["product_id","uuid","fk"],["version_code","string"],["effective_from","date"],["effective_to","date"],["status","enum"],["approved_by_actor_id","uuid","fk"],["approval_date","date"],["change_summary","string"],["created_at","timestamp"],["updated_at","timestamp"]]],["Coverage","product",[["coverage_id","uuid","pk"],["product_version_id","uuid","fk"],["coverage_code","string"],["name","string"],["coverage_type","enum"],["category","string"],["description","string"],["is_mandatory","bool"],["limit_min","number"],["limit_max","number"],["limit_default","number"],["deductible_options","string"],["deductible_default","string"],["waiting_period_days","int"],["status","enum"],["created_at","timestamp"],["updated_at","timestamp"]]],["RatingMatrix","product",[["rating_matrix_id","uuid","pk"],["product_version_id","uuid","fk"],["matrix_code","string"],["name","string"],["description","string"],["rating_factors","string"],["effective_from","date"],["effective_to","date"],["approved_by_actor_id","uuid","fk"],["approval_date","date"],["source_reference_doc_id","uuid","fk"],["status","enum"],["created_at","timestamp"],["updated_at","timestamp"]]],["UWRuleset","product",[["uw_ruleset_id","uuid","pk"],["product_version_id","uuid","fk"],["ruleset_code","string"],["name","string"],["description","string"],["key_criteria","string"],["authority_levels","string"],["effective_from","date"],["effective_to","date"],["approved_by_actor_id","uuid","fk"],["approval_date","date"],["source_reference_doc_id","uuid","fk"],["status","enum"],["created_at","timestamp"],["updated_at","timestamp"]]],["CommissionSchedule","product",[["commission_schedule_id","uuid","pk"],["broker_id","uuid","fk"],["product_version_id","uuid","fk"],["base_rate","number"],["contingent_rate","number"],["contingent_condition","string"],["volume_tier","string"],["override_rate","number"],["effective_from","date"],["effective_to","date"],["approved_by_actor_id","uuid","fk"],["approval_date","date"],["status","enum"],["notes","string"],["created_at","timestamp"],["updated_at","timestamp"]]],["Container","container",[["container_id","uuid","pk"],["kind","enum"],["domain","enum"],["name","string"],["description","string"],["product_id","uuid","fk"],["jurisdiction","string"],["owner_role","enum"],["retention_policy","string"],["status","enum"],["created_at","timestamp"],["updated_at","timestamp"]]],["ReferenceDocument","container",[["reference_doc_id","uuid","pk"],["container_id","uuid","fk"],["product_version_id","uuid","fk"],["title","string"],["doc_type","enum"],["description","string"],["version_label","string"],["language","string"],["effective_from","date"],["effective_to","date"],["uploaded_by_actor_id","uuid","fk"],["on_behalf_of_actor_id","uuid","fk"],["approved_by_actor_id","uuid","fk"],["approval_date","date"],["storage_path","string"],["file_type","string"],["file_size_bytes","int"],["content_hash","string"],["status","enum"],["created_at","timestamp"],["updated_at","timestamp"]]],["Submission","quote",[["submission_id","uuid","pk"],["account_id","uuid","fk"],["insured_id","uuid","fk"],["broker_id","uuid","fk"],["product_id","uuid","fk"],["producer_party_id","uuid","fk"],["submission_type","enum"],["submitted_date","date"],["effective_date_requested","date"],["risk_summary","string"],["number_of_units","int"],["total_insured_value","number"],["requested_coverages","string"],["zone","string"],["prior_loss_summary","string"],["received_by_actor_id","uuid","fk"],["status","enum"],["decline_reason","string"],["decline_date","date"],["priority","enum"],["referral_reason","string"],["notes","string"],["created_at","timestamp"],["updated_at","timestamp"]]],["Quote","quote",[["quote_id","uuid","pk"],["submission_id","uuid","fk"],["rating_matrix_id","uuid","fk"],["commission_schedule_id","uuid","fk"],["quote_number","string"],["quote_type","enum"],["quoted_premium","number"],["currency","string"],["commission_rate","number"],["commission_amount","number"],["terms_summary","string"],["coverages_offered","string"],["valid_from","date"],["valid_to","date"],["quoted_by_actor_id","uuid","fk"],["approved_by_actor_id","uuid","fk"],["status","enum"],["decline_reason","string"],["notes","string"],["created_at","timestamp"],["updated_at","timestamp"]]],["Policy","policy",[["policy_id","uuid","pk"],["policy_number","string"],["account_id","uuid","fk"],["insured_id","uuid","fk"],["broker_id","uuid","fk"],["product_version_id","uuid","fk"],["quote_id","uuid","fk"],["commission_schedule_id","uuid","fk"],["prior_policy_id","uuid","fk"],["policy_type","enum"],["bind_date","date"],["inception_date","date"],["expiry_date","date"],["written_premium","number"],["gross_premium","number"],["tax_amount","number"],["currency","string"],["commission_rate","number"],["commission_amount","number"],["number_of_units","int"],["zone","string"],["bound_by_actor_id","uuid","fk"],["uw_rationale","string"],["status","enum"],["cancellation_date","date"],["cancellation_reason","string"],["notes","string"],["created_at","timestamp"],["updated_at","timestamp"]]],["InsuredItem","policy",[["insured_item_id","uuid","pk"],["policy_id","uuid","fk"],["item_number","string"],["item_type","enum"],["item_description","string"],["declared_value","number"],["currency","string"],["vin","string"],["make","string"],["model","string"],["year","int"],["vehicle_age","int"],["use_class","string"],["license_plate","string"],["zone","string"],["status","enum"],["added_date","date"],["removed_date","date"],["created_at","timestamp"],["updated_at","timestamp"]]],["PolicyCoverage","policy",[["policy_coverage_id","uuid","pk"],["policy_id","uuid","fk"],["coverage_id","uuid","fk"],["limit_amount","number"],["deductible_type","enum"],["deductible_value","number"],["allocated_premium","number"],["waiting_period_days","int"],["sublimit","number"],["exclusions","string"],["special_conditions","string"],["status","enum"],["created_at","timestamp"],["updated_at","timestamp"]]],["Exposure","policy",[["exposure_id","uuid","pk"],["policy_id","uuid","fk"],["insured_item_id","uuid","fk"],["period_start","date"],["period_end","date"],["exposure_units","number"],["exposure_unit_type","string"],["earned_premium","number"],["currency","string"],["created_at","timestamp"],["updated_at","timestamp"]]],["PolicyTransaction","policy",[["policy_txn_id","uuid","pk"],["policy_id","uuid","fk"],["actor_id","uuid","fk"],["txn_type","enum"],["txn_date","date"],["effective_date","date"],["description","string"],["premium_impact","number"],["currency","string"],["authorization_level","string"],["status","enum"],["created_at","timestamp"],["updated_at","timestamp"]]],["Endorsement","policy",[["endorsement_id","uuid","pk"],["policy_txn_id","uuid","fk"],["endorsement_type","enum"],["endorsement_number","string"],["effective_date","date"],["description","string"],["items_added","int"],["items_removed","int"],["premium_before","number"],["premium_after","number"],["premium_adjustment","number"],["currency","string"],["approved_by_actor_id","uuid","fk"],["status","enum"],["created_at","timestamp"],["updated_at","timestamp"]]],["Claim","claims",[["claim_id","uuid","pk"],["claim_number","string"],["policy_id","uuid","fk"],["insured_item_id","uuid","fk"],["loss_date","date"],["loss_time","time"],["notification_date","date"],["loss_type","enum"],["loss_description","string"],["loss_location","string"],["zone","string"],["fault_determination","enum"],["fraud_flag","enum"],["fraud_reason","string"],["severity","enum"],["assigned_adjuster_actor_id","uuid","fk"],["status","enum"],["denial_reason","string"],["closure_date","date"],["total_incurred","number"],["currency","string"],["notes","string"],["created_at","timestamp"],["updated_at","timestamp"]]],["ClaimInvolvement","claims",[["claim_involvement_id","uuid","pk"],["claim_id","uuid","fk"],["party_id","uuid","fk"],["involvement_type","enum"],["description","string"],["injury_type","string"],["injury_severity","enum"],["at_fault","bool"],["created_at","timestamp"],["updated_at","timestamp"]]],["ClaimEvent","claims",[["claim_event_id","uuid","pk"],["claim_id","uuid","fk"],["actor_id","uuid","fk"],["event_type","enum"],["event_date","timestamp"],["description","string"],["document_reference","string"],["created_at","timestamp"],["updated_at","timestamp"]]],["ClaimCoverage","claims",[["claim_coverage_id","uuid","pk"],["claim_id","uuid","fk"],["policy_coverage_id","uuid","fk"],["claimed_amount","number"],["reserved_amount","number"],["paid_amount","number"],["deductible_applied","number"],["status","enum"],["denial_reason","string"],["currency","string"],["created_at","timestamp"],["updated_at","timestamp"]]],["ClaimItem","claims",[["claim_item_id","uuid","pk"],["claim_id","uuid","fk"],["insured_item_id","uuid","fk"],["damage_type","enum"],["damage_description","string"],["estimated_repair_cost","number"],["actual_repair_cost","number"],["outcome","enum"],["currency","string"],["created_at","timestamp"],["updated_at","timestamp"]]],["Reserve","claims",[["reserve_id","uuid","pk"],["claim_id","uuid","fk"],["claim_coverage_id","uuid","fk"],["actor_id","uuid","fk"],["reserve_type","enum"],["amount","number"],["prior_amount","number"],["reserve_date","date"],["reason","string"],["currency","string"],["created_at","timestamp"],["updated_at","timestamp"]]],["Settlement","claims",[["settlement_id","uuid","pk"],["claim_id","uuid","fk"],["claim_coverage_id","uuid","fk"],["settlement_type","enum"],["settled_amount","number"],["deductible_applied","number"],["net_payable","number"],["currency","string"],["settlement_date","date"],["approved_by_actor_id","uuid","fk"],["terms","string"],["status","enum"],["created_at","timestamp"],["updated_at","timestamp"]]],["Payment","claims",[["payment_id","uuid","pk"],["settlement_id","uuid","fk"],["paid_to_party_id","uuid","fk"],["payment_type","enum"],["amount","number"],["currency","string"],["payment_date","date"],["payment_method","string"],["payment_reference","string"],["status","enum"],["created_at","timestamp"],["updated_at","timestamp"]]],["Artifact","documents",[["artifact_id","uuid","pk"],["container_id","uuid","fk"],["uploaded_by_actor_id","uuid","fk"],["on_behalf_of_party_id","uuid","fk"],["policy_id","uuid","fk"],["claim_id","uuid","fk"],["account_id","uuid","fk"],["title","string"],["artifact_type","enum"],["lifecycle_stage","enum"],["document_state","enum"],["pending_review_reason","string"],["source_system","string"],["original_filename","string"],["storage_path","string"],["file_type","string"],["file_size_bytes","int"],["content_hash","string"],["page_count","int"],["language","string"],["ocr_applied","bool"],["retention_schedule_id","uuid","fk"],["retention_until","date"],["ingested_at","timestamp"],["created_at","timestamp"],["updated_at","timestamp"]]],["DocumentClassification","documents",[["classification_id","uuid","pk"],["artifact_id","uuid","fk"],["class_label","string"],["confidence","number"],["confidence_threshold","number"],["taxonomy_version","string"],["alternative_label","string"],["alternative_confidence","number"],["provenance_id","uuid","fk"],["is_validated","bool"],["validated_by_actor_id","uuid","fk"],["validation_date","timestamp"],["created_at","timestamp"],["updated_at","timestamp"]]],["Signal","documents",[["signal_id","uuid","pk"],["artifact_id","uuid","fk"],["provenance_id","uuid","fk"],["signal_name","string"],["signal_category","enum"],["value","string"],["value_type","enum"],["unit","string"],["confidence","number"],["concern_flag","bool"],["concern_reason","string"],["source_location","string"],["valid_time","timestamp"],["ingested_time","timestamp"],["is_validated","bool"],["validated_by_actor_id","uuid","fk"],["status","enum"],["created_at","timestamp"],["updated_at","timestamp"]]],["DatasetResolution","documents",[["resolution_id","uuid","pk"],["artifact_id","uuid","fk"],["product_version_id","uuid","fk"],["rating_matrix_id","uuid","fk"],["uw_ruleset_id","uuid","fk"],["confidence","number"],["resolution_method","enum"],["resolution_notes","string"],["provenance_id","uuid","fk"],["is_validated","bool"],["validated_by_actor_id","uuid","fk"],["status","enum"],["created_at","timestamp"],["updated_at","timestamp"]]],["AgentOutput","intelligence",[["agent_output_id","uuid","pk"],["actor_id","uuid","fk"],["output_type","enum"],["target_type","string"],["target_id","uuid","fk"],["run_date","date"],["narrative","string"],["structured_observations","string"],["confidence","number"],["signals_used","string"],["provenance_id","uuid","fk"],["status","enum"],["created_at","timestamp"],["updated_at","timestamp"]]],["Pattern","intelligence",[["pattern_id","uuid","pk"],["agent_output_id","uuid","fk"],["pattern_name","string"],["description","string"],["conditions","string"],["outcome_metric","string"],["outcome_value","number"],["baseline_value","number"],["lift","number"],["sample_n","int"],["confidence","number"],["disposition","enum"],["disposition_date","date"],["disposition_by_actor_id","uuid","fk"],["disposition_notes","string"],["created_at","timestamp"],["updated_at","timestamp"]]],["PatternMember","intelligence",[["pattern_member_id","uuid","pk"],["pattern_id","uuid","fk"],["member_type","string"],["member_id","uuid","fk"],["contribution_value","number"],["created_at","timestamp"],["updated_at","timestamp"]]],["Recommendation","intelligence",[["recommendation_id","uuid","pk"],["agent_output_id","uuid","fk"],["action_text","string"],["reasoning","string"],["factors_not_seen","string"],["urgency","enum"],["expected_impact","string"],["disposition","enum"],["disposition_by_actor_id","uuid","fk"],["disposition_date","date"],["disposition_notes","string"],["outcome_tracked","bool"],["outcome_notes","string"],["created_at","timestamp"],["updated_at","timestamp"]]],["ProvenanceNode","compliance",[["provenance_id","uuid","pk"],["actor_id","uuid","fk"],["operation_type","enum"],["model","string"],["model_version","string"],["temperature","number"],["confidence","number"],["prompt_reference","string"],["input_artifacts","string"],["input_signals","string"],["output_summary","string"],["processing_time_ms","int"],["cost_tokens","int"],["timestamp","timestamp"],["full_prompt","string"],["retrieval_context","string"],["reasoning_trace","string"],["created_at","timestamp"],["updated_at","timestamp"]]],["AuditEntry","compliance",[["audit_id","uuid","pk"],["actor_id","uuid","fk"],["action_type","enum"],["object_type","string"],["object_id","uuid","fk"],["description","string"],["previous_value","string"],["new_value","string"],["ip_address","string"],["session_id","string"],["timestamp","timestamp"],["created_at","timestamp"]]],["ReviewCase","compliance",[["review_case_id","uuid","pk"],["artifact_id","uuid","fk"],["assigned_actor_id","uuid","fk"],["case_type","enum"],["trigger_reason","string"],["related_classification_id","uuid","fk"],["related_signal_id","uuid","fk"],["related_resolution_id","uuid","fk"],["priority","enum"],["status","enum"],["reviewer_decision","string"],["reviewed_at","timestamp"],["created_at","timestamp"],["updated_at","timestamp"]]],["EvidencePackage","compliance",[["evidence_package_id","uuid","pk"],["policy_id","uuid","fk"],["claim_id","uuid","fk"],["regulator_request_id","uuid","fk"],["package_type","enum"],["title","string"],["description","string"],["assembled_by_actor_id","uuid","fk"],["assembled_date","date"],["artifact_ids","string"],["signal_ids","string"],["agent_output_ids","string"],["export_format","string"],["export_path","string"],["status","enum"],["submitted_date","date"],["created_at","timestamp"],["updated_at","timestamp"]]],["RegulatorRequest","compliance",[["regulator_request_id","uuid","pk"],["authority","string"],["reference_number","string"],["subject","string"],["received_date","date"],["due_date","date"],["priority","enum"],["related_policy_id","uuid","fk"],["related_claim_id","uuid","fk"],["assigned_actor_id","uuid","fk"],["status","enum"],["response_date","date"],["response_notes","string"],["created_at","timestamp"],["updated_at","timestamp"]]],["RetentionSchedule","compliance",[["retention_schedule_id","uuid","pk"],["jurisdiction","string"],["product_id","uuid","fk"],["doc_type","string"],["retention_years","int"],["retention_basis","enum"],["regulatory_reference","string"],["notes","string"],["status","enum"],["created_at","timestamp"],["updated_at","timestamp"]]]],"R":[["Party","HAS_ACCOUNT","Account","A Party can have one or more Accounts.","doc"],["Party","IS_INSURED","Insured","A Party can play the Insured role on one or more policies.","doc"],["Party","IS_BROKER","Broker","A Party (org) can be registered as a Broker.","doc"],["Party","IS_ACTOR","Actor","A Party can act within the PLM system.","doc"],["Party","RELATED_TO","Party","Typed relationship to another Party (works_at, parent_of, subsidiary_of, etc.).","doc"],["Claim","INVOLVED_IN","Party","Party involved in a claim (as driver, injured third party, witness, etc.).","doc"],["Submission","PRODUCED_BY","Party","Party who originated the submission (the salesperson).","doc"],["Payment","PAID_TO","Party","Party receiving a claim payment.","doc"],["Artifact","ON_BEHALF_OF","Party","Party on whose behalf a document was uploaded.","doc"],["PartyRelationship","FROM","Party","The subject party.","doc"],["PartyRelationship","TO","Party","The object party.","doc"],["Account","BELONGS_TO","Party","The customer who owns this account.","doc"],["Account","DISTRIBUTED_BY","Broker","The broker/channel managing this account.","doc"],["Account","MANAGED_BY","Actor","The carrier's account executive.","doc"],["Account","HAS_INSURED","Insured","The insured role(s) under this account.","doc"],["Policy","HAS_POLICY","Account","Policies under this account.","doc"],["Submission","HAS_SUBMISSION","Account","Submissions originated for this account.","doc"],["Insured","IS_A","Party","The underlying identity.","doc"],["Insured","UNDER_ACCOUNT","Account","The commercial relationship.","doc"],["Policy","HELD_BY","Insured","Policies where this party is the insured.","doc"],["Submission","ABOUT","Insured","Submissions about this insured.","doc"],["Broker","IS_A","Party","The underlying organization identity.","doc"],["Broker","DISTRIBUTES","Account","Accounts placed through this broker.","doc"],["Policy","PLACED_BY","Broker","Policies placed through this broker.","doc"],["Submission","VIA","Broker","Submissions originated through this broker.","doc"],["Actor","IS_A","Party","The underlying identity (person or virtual entity).","doc"],["Actor","MANAGES","Account","Accounts managed by this actor.","doc"],["Artifact","UPLOADED_BY","Actor","Documents uploaded by this actor.","doc"],["PolicyTransaction","BY","Actor","Policy transactions executed by this actor.","doc"],["ClaimEvent","BY","Actor","Claim events executed by this actor.","doc"],["Reserve","SET_BY","Actor","Reserves set by this actor.","doc"],["AgentOutput","BY","Actor","Agent outputs produced by this actor.","doc"],["ProvenanceNode","BY","Actor","Provenance entries created by this actor.","doc"],["AuditEntry","BY","Actor","Audit log entries for this actor.","doc"],["ReviewCase","ASSIGNED_TO","Actor","Review cases assigned to this actor.","doc"],["Product","HAS_VERSION","ProductVersion","All versions of this product.","doc"],["Submission","FOR_PRODUCT","Product","Submissions for this product.","doc"],["ProductVersion","OF_PRODUCT","Product","The parent product.","doc"],["ProductVersion","APPROVED_BY","Actor","Who approved the version.","doc"],["ProductVersion","HAS_COVERAGE","Coverage","Coverages defined in this version.","doc"],["ProductVersion","HAS_RATING","RatingMatrix","Rating matrices for this version.","doc"],["ProductVersion","HAS_RULES","UWRuleset","UW rulesets for this version.","doc"],["Policy","RATED_UNDER","ProductVersion","Policies bound under this version.","doc"],["ReferenceDocument","ABOUT_VERSION","ProductVersion","Reference documents specific to this version.","doc"],["DatasetResolution","MATCHES_VERSION","ProductVersion","Document-to-version resolution matches.","doc"],["Coverage","DEFINED_BY","ProductVersion","The version that defines this coverage.","doc"],["PolicyCoverage","OF_TYPE","Coverage","Policy-level instances of this coverage.","doc"],["ClaimCoverage","AGAINST","Coverage","Claims against this coverage type (traversed via PolicyCoverage).","doc"],["RatingMatrix","OF_VERSION","ProductVersion","The product version this matrix prices.","doc"],["RatingMatrix","APPROVED_BY","Actor","Who approved the matrix.","doc"],["RatingMatrix","DOCUMENTED_IN","ReferenceDocument","The reference document with the full matrix detail.","doc"],["Quote","RATED_BY","RatingMatrix","Quotes calculated with this matrix.","doc"],["DatasetResolution","MATCHES_RATING","RatingMatrix","Document-to-matrix resolution matches.","doc"],["UWRuleset","OF_VERSION","ProductVersion","The product version these rules apply to.","doc"],["UWRuleset","APPROVED_BY","Actor","Who approved the ruleset.","doc"],["UWRuleset","DOCUMENTED_IN","ReferenceDocument","The reference document with the full ruleset.","doc"],["DatasetResolution","MATCHES_RULES","UWRuleset","Document-to-ruleset resolution matches.","doc"],["CommissionSchedule","FOR_BROKER","Broker","The broker this schedule applies to.","doc"],["CommissionSchedule","FOR_VERSION","ProductVersion","The product version this schedule covers.","doc"],["CommissionSchedule","APPROVED_BY","Actor","Who approved the schedule.","doc"],["Policy","COMMISSION_OF","CommissionSchedule","Policies using this commission structure to calculate broker payout.","doc"],["Container","FOR_PRODUCT","Product","The product this container is scoped to.","doc"],["Container","CONTAINS_REF","ReferenceDocument","Reference documents within this container.","doc"],["Artifact","CONTAINS_ARTIFACT","Container","Lifecycle artifacts within this container.","doc"],["ReferenceDocument","IN","Container","The container this document lives in.","doc"],["ReferenceDocument","UPLOADED_BY","Actor","Who uploaded this document.","doc"],["ReferenceDocument","ON_BEHALF_OF","Actor","Specialist on whose behalf the document was uploaded.","doc"],["ReferenceDocument","APPROVED_BY","Actor","Who approved the document.","doc"],["Submission","FOR_ACCOUNT","Account","The commercial relationship.","doc"],["Submission","RECEIVED_BY","Actor","The underwriter handling this submission.","doc"],["Submission","HAS_QUOTE","Quote","Quotes produced for this submission.","doc"],["Policy","FROM_SUBMISSION","Submission","Policy that resulted from this submission (if bound).","doc"],["Quote","QUOTED_FROM","Submission","The submission this quote responds to.","doc"],["Quote","COMMISSION_OF","CommissionSchedule","The commission structure applied.","doc"],["Quote","QUOTED_BY","Actor","Who produced this quote.","doc"],["Quote","APPROVED_BY","Actor","Who approved (if referral).","doc"],["Policy","FROM_QUOTE","Quote","The policy created from this accepted quote.","doc"],["Policy","UNDER_ACCOUNT","Account","The commercial relationship.","doc"],["Policy","RENEWS","Policy","The prior policy (renewal chain).","doc"],["Policy","BOUND_BY","Actor","Who bound the policy.","doc"],["Policy","HAS_ITEM","InsuredItem","Items insured under this policy.","doc"],["Policy","HAS_COVERAGE","PolicyCoverage","Coverage instances on this policy.","doc"],["Policy","HAS_EXPOSURE","Exposure","Exposure records for this policy.","doc"],["Policy","HAS_TRANSACTION","PolicyTransaction","Transactions modifying this policy.","doc"],["Claim","UNDER","Policy","Claims against this policy.","doc"],["Artifact","IN_LIFECYCLE_OF","Policy","Documents associated with this policy.","doc"],["EvidencePackage","FOR_POLICY","Policy","Evidence packages assembled for this policy.","doc"],["InsuredItem","ITEM_OF","Policy","The policy this item belongs to.","doc"],["InsuredItem","HAS_EXPOSURE","Exposure","Exposure records for this item.","doc"],["Claim","ON_ITEM","InsuredItem","Claims involving this item.","doc"],["ClaimItem","DAMAGE_TO","InsuredItem","Damage records for this item.","doc"],["PolicyCoverage","COVERAGE_OF","Policy","The policy this coverage belongs to.","doc"],["ClaimCoverage","AGAINST","PolicyCoverage","Claims filed against this coverage.","doc"],["Exposure","EXPOSURE_OF","Policy","The policy.","doc"],["Exposure","ON_ITEM","InsuredItem","The specific item this exposure measures.","doc"],["PolicyTransaction","TRANSACTION_OF","Policy","The policy being modified.","doc"],["PolicyTransaction","HAS_ENDORSEMENT","Endorsement","The endorsement detail, if this is an endorsement transaction.","doc"],["Endorsement","IS_A","PolicyTransaction","The parent transaction.","doc"],["Endorsement","APPROVED_BY","Actor","Who approved the endorsement.","doc"],["Claim","ASSIGNED_TO","Actor","The assigned adjuster.","doc"],["Claim","HAS_INVOLVEMENT","ClaimInvolvement","Parties involved in this claim.","doc"],["Claim","HAS_EVENT","ClaimEvent","Timeline of events.","doc"],["Claim","HAS_COVERAGE","ClaimCoverage","Coverages triggered by this claim.","doc"],["Claim","HAS_ITEM","ClaimItem","Items damaged in this claim.","doc"],["Claim","HAS_RESERVE","Reserve","Reserve records for this claim.","doc"],["Claim","HAS_SETTLEMENT","Settlement","Settlements for this claim.","doc"],["Artifact","IN_LIFECYCLE_OF","Claim","Documents associated with this claim (FNOL report, peritaje, etc.).","doc"],["EvidencePackage","FOR_CLAIM","Claim","Evidence packages assembled for this claim.","doc"],["ClaimInvolvement","IN_CLAIM","Claim","The claim.","doc"],["ClaimInvolvement","INVOLVES","Party","The involved party.","doc"],["ClaimEvent","EVENT_OF","Claim","The claim.","doc"],["ClaimCoverage","CLAIMCOV_OF","Claim","The claim.","doc"],["ClaimItem","CLAIMITEM_OF","Claim","The claim.","doc"],["Reserve","RESERVE_OF","Claim","The claim.","doc"],["Reserve","FOR_COVERAGE","ClaimCoverage","Which coverage this reserve applies to.","doc"],["Settlement","SETTLES","Claim","The claim being settled.","doc"],["Settlement","FOR_COVERAGE","ClaimCoverage","Which coverage this settlement resolves.","doc"],["Settlement","APPROVED_BY","Actor","Who approved.","doc"],["Settlement","HAS_PAYMENT","Payment","Payments executing this settlement.","doc"],["Payment","PAYMENT_OF","Settlement","The settlement being paid.","doc"],["Artifact","IN","Container","The container this artifact lives in.","doc"],["Artifact","OF_ACCOUNT","Account","The associated account.","doc"],["Artifact","GOVERNED_BY","RetentionSchedule","The retention rule for this document.","doc"],["Artifact","HAS_CLASSIFICATION","DocumentClassification","Classifications of this artifact.","doc"],["Artifact","HAS_SIGNAL","Signal","Signals extracted from this artifact.","doc"],["Artifact","HAS_RESOLUTION","DatasetResolution","Version resolution for this artifact.","doc"],["DocumentClassification","CLASSIFIES","Artifact","The classified document.","doc"],["DocumentClassification","PRODUCED_BY","ProvenanceNode","Provenance of this classification.","doc"],["DocumentClassification","VALIDATED_BY","Actor","Who validated.","doc"],["Signal","EXTRACTED_FROM","Artifact","The source document.","doc"],["Signal","PRODUCED_BY","ProvenanceNode","Full provenance of extraction.","doc"],["Signal","VALIDATED_BY","Actor","Who validated.","doc"],["DatasetResolution","RESOLVES","Artifact","The document being resolved.","doc"],["DatasetResolution","PRODUCED_BY","ProvenanceNode","Provenance of resolution.","doc"],["DatasetResolution","VALIDATED_BY","Actor","Who validated.","doc"],["AgentOutput","PRODUCED_BY","ProvenanceNode","Full provenance.","doc"],["AgentOutput","HAS_PATTERN","Pattern","Patterns discovered in this output.","doc"],["AgentOutput","HAS_RECOMMENDATION","Recommendation","Recommendations made in this output.","doc"],["Pattern","FROM","AgentOutput","The analysis that discovered this pattern.","doc"],["Pattern","DISPOSITIONED_BY","Actor","Who acted on this pattern.","doc"],["Pattern","HAS_MEMBER","PatternMember","The specific entities that form this pattern.","doc"],["PatternMember","MEMBER_OF","Pattern","The pattern.","doc"],["Recommendation","SUPPORTS","AgentOutput","The analysis behind this recommendation.","doc"],["Recommendation","DISPOSITIONED_BY","Actor","Who decided.","doc"],["ReviewCase","ON","Artifact","The document being reviewed.","doc"],["EvidencePackage","RESPONDS_TO","RegulatorRequest","The regulatory request this responds to.","doc"],["EvidencePackage","ASSEMBLED_BY","Actor","Who assembled the package.","doc"],["RegulatorRequest","ABOUT_POLICY","Policy","The policy in question.","doc"],["RegulatorRequest","ABOUT_CLAIM","Claim","The claim in question.","doc"],["RegulatorRequest","ASSIGNED_TO","Actor","Who is responsible.","doc"],["RegulatorRequest","RESPONDED_WITH","EvidencePackage","The evidence package that responds.","doc"],["RetentionSchedule","FOR_PRODUCT","Product","The product this rule is scoped to, if product-specific.","doc"],["Artifact","GOVERNS","RetentionSchedule","Documents governed by this retention rule.","doc"]],"DOMAINS":[{"key":"party","name":"Identity & Party"},{"key":"product","name":"Product & Master Data"},{"key":"container","name":"Containers & Reference"},{"key":"quote","name":"Quote & Application"},{"key":"policy","name":"Policy Lifecycle"},{"key":"claims","name":"Claims"},{"key":"documents","name":"Documents & Signals"},{"key":"intelligence","name":"Intelligence"},{"key":"compliance","name":"Provenance & Compliance"}],"MEANING":{"Party":"What it is: The universal identity anchor. Every person or organization exists exactly once.Why it exists: Entity resolution needs a single landing point. The relationship graph (Query 1.3) requires that the same entity connects across policies, claims, brokers, and accounts. Without Party as anchor","PartyRelationship":"What it is: A typed, temporal edge between two Parties.Why it exists: Replaces the old Principal entity and Driver.insured_id relationship. Enables flexible relationship modeling: corporate hierarchies (PARENT_OF), employment (WORKS_AT), contact roles (CONTACT_FOR), and any future relationship type ","Account":"What it is: The commercial relationship between the carrier and a customer, through a distribution channel.Why it exists: Query 1.1 is called \"Account lifecycle reconstruction\" — Account is the natural entry point for reconstructing everything that has happened with a customer. It groups policies ac","Insured":"What it is: The role a Party plays as the named insured on a policy. Links identity (Party) and commercial relationship (Account) to the contractual role.Why it exists: A Party may be insured under multiple policies and multiple accounts. Insured captures the specific instance of \"this Party is the ","Broker":"What it is: An organization registered as an insurance distribution channel with the carrier.Why it exists: Broker is a first-class analytical dimension for PLM. Distribution analysis — loss ratio by broker, pattern detection by channel, broker performance monitoring — is core to underwriting and po","Actor":"What it is: A Party that executes actions within the PLM system or the carrier's operations. Can be human (underwriter, claims adjuster, admin) or artificial (AI agent).Why it exists: Actor is the traceability anchor for PLM's Level Two discipline. Every decision, extraction, classification, and age","Product":"What it is: An insurance product the carrier offers. The stable identity of what is sold, independent of how it is configured over time.Why it exists: Product is the transversal dimension described in the foundational document (§2.2). It tags every lifecycle artifact and organizes content within dom","ProductVersion":"What it is: A versioned snapshot of the product's configuration at a point in time. Every change to coverages, pricing, or underwriting rules produces a new version.Why it exists: This is the foundation of bitemporal reconstruction. Query 1.2 (UW moment reconstruction) asks \"what was knowable at the","Coverage":"What it is: A coverage type defined within a product version. Describes what protection is available and its parameters (type, allowed limit ranges, deductible options).Why it exists: Coverage bridges the product definition with the policy instantiation. The product says \"we offer third-party liabil","RatingMatrix":"What it is: Metadata about a pricing structure associated with a product version. Identifies which rating table was in force, when, and what factors it considers — without replicating the pricing engine.Why it exists: DatasetResolution needs to match an ingested document (e.g., a quote calculation) ","UWRuleset":"What it is: Metadata about an underwriting ruleset associated with a product version. Identifies which appetite guidelines, acceptance criteria, and authority limits were in force — without replicating the UW engine.Why it exists: Same resolution logic as RatingMatrix but for underwriting. When the ","CommissionSchedule":"What it is: The commission structure agreed between the carrier and a broker for a specific product version. Defines base rates, contingent/profit-sharing terms, and volume tiers.Why it exists: Without commissions you cannot compute expense ratio or true combined ratio — and combined ratio improveme","Container":"What it is: An organizational structure within the PLM substrate. Either a master container holding lifecycle artifacts or a domain subject holding reference material.Why it exists: The foundational document (§2.1) establishes that lifecycle artifacts and reference data have different lifecycles, go","ReferenceDocument":"What it is: An authored piece of reference material that the carrier produces to guide its operations. This is the carrier's institutional knowledge — the actual document behind the structured metadata in Domain 2.Why it exists: RatingMatrix (Domain 2) says \"the pricing uses these factors.\" Referenc","Submission":"What it is: A request to evaluate and potentially insure a risk. Submitted by a broker (or direct channel) on behalf of a prospective or existing insured.Why it exists: The submission is \"what was presented\" — the risk profile as the broker described it. This is the input to underwriting evaluation.","Quote":"What it is: A priced offer produced by the carrier in response to a submission. Records the premium, the rating matrix used, and the terms offered.Why it exists: The quote is the carrier's answer to the submission — \"we'll insure this risk for X under these terms.\" Multiple quotes can exist per subm","Policy":"What it is: A bound insurance contract between the carrier and the insured.Why it exists: Policy is the central node of the lifecycle graph. Every claim, every endorsement, every exposure measurement, and every document traces back to a policy. Query 1.1 reconstructs the policy's lifecycle. Query 1.","InsuredItem":"What it is: A physical or intangible object insured under a policy. In auto: a vehicle. In property: a building. In life: not applicable (the insured person IS the item).Why it exists: Claims happen to specific items, not to the policy in general. Juan crashed tractor #7 — the claim needs to referen","PolicyCoverage":"What it is: A specific coverage instance on a policy with policy-level values (actual limit, deductible, allocated premium).Why it exists: Coverage (Domain 2) defines \"the product offers TPL with limits 50M–500M.\" PolicyCoverage says \"this specific policy has TPL at 300M with 5% deductible.\" This se","Exposure":"What it is: A time-bounded measurement of the risk exposure for a specific insured item on a policy. Tracks vehicle-months (or other exposure units) and earned premium over time.Why it exists: Loss ratio = incurred losses ÷ earned premium. Without Exposure, you cannot compute earned premium at the g","PolicyTransaction":"What it is: An auditable record of every action that modifies or is executed against the policy. The timeline of \"what happened to this contract.\"Why it exists: Query 1.1 (account lifecycle reconstruction) walks the chain of PolicyTransactions to show the complete history: bind → endorsement → endor","Endorsement":"What it is: The detail of a policy modification — what specifically changed. A specialization of PolicyTransaction.Why it exists: PolicyTransaction records THAT something happened. Endorsement records WHAT changed: items added/removed, coverages modified, limits adjusted, premium recalculated. This ","Claim":"What it is: A reported loss event against a policy. The master record that anchors all claim-related entities.Why it exists: Claims are the outcomes that make PLM's cycle-closing insight possible. The cross-domain agent connects UW decisions and pricing reasoning to claims outcomes: \"policies with t","ClaimInvolvement":"What it is: A record of a party's involvement in a claim, with their specific role.Why it exists: Replaces the old Driver entity and Claim.driver_id FK from v2. A claim can involve multiple parties in different roles: the driver, the injured third party, a witness, the vehicle owner (if different fr","ClaimEvent":"What it is: A timestamped event in the claim's lifecycle. The timeline of everything that happened.Why it exists: The claims lifecycle has a defined sequence: FNOL → investigation → peritaje → reserve → negotiation → settlement → payment → closure. Each step is a ClaimEvent with an Actor. This timel","ClaimCoverage":"What it is: A record linking a claim to the specific PolicyCoverage being claimed against, with the amounts claimed and resolved under that coverage.Why it exists: A single claim can trigger multiple coverages. Juan's accident claims against PD (tractor damage), TPL (María's property/liability), and","ClaimItem":"What it is: A record of damage to a specific insured item in a claim.Why it exists: While Claim references the primary insured item, a claim can damage multiple items (a collision might damage 2 tractors in convoy). ClaimItem captures what happened to each item: the type of damage, the estimated rep","Reserve":"What it is: A time-stamped estimate of the ultimate cost of a claim. Each adjustment creates a new Reserve record — the history is the story of how the loss estimate evolved.Why it exists: Reserves are the foundation of incurred loss calculation. Incurred = paid + outstanding reserves. Reserves chan","Settlement":"What it is: An agreed resolution for all or part of a claim. Records the settlement amount, the terms, and who approved it.Why it exists: Settlement is the agreement — the carrier and the claimant agree on the amount and terms. It's separate from Payment because a settlement can produce multiple pay","Payment":"What it is: An actual financial disbursement executing a settlement. Records who received the money, how much, and when.Why it exists: Payment closes the financial loop. The chain Policy(written_premium) → Exposure(earned_premium) → Claim → Reserve → Settlement → Payment gives PLM complete visibilit","Artifact":"What it is: A lifecycle document that arrives through the ingestion pipeline. Any file the carrier produces or receives as part of the policy lifecycle: submissions, loss runs, policies, endorsements, FNOL reports, peritajes, adjuster narratives, settlement documents, communications.Why it exists: A","DocumentClassification":"What it is: The pipeline's determination of what type of document an artifact is, with confidence score.Why it exists: Classification determines what signals to extract. An FNOL report produces different signals than a peritaje or a loss run. The classification also feeds the document taxonomy that ","Signal":"What it is: An atomic fact extracted from a document by the ingestion pipeline. The structured knowledge unit that agents reason about.Why it exists: Signals are PLM's core value extraction. Raw documents are unstructured — a peritaje report is 8 pages of narrative. Signals convert that into structu","DatasetResolution":"What it is: The pipeline's determination of which ProductVersion, RatingMatrix, and UWRuleset a document corresponds to. Anchors each artifact in the correct product context.Why it exists: When a quote calculation document arrives, the pipeline needs to determine: \"this quote was produced using Rati","AgentOutput":"What it is: A complete analysis or reasoning output produced by a PLM agent. Contains narrative reasoning for human consumption plus structured observations for programmatic consumption by other agents.Why it exists: This is where PLM's intelligence materializes. Without persisting agent outputs, th","Pattern":"What it is: A statistical pattern discovered by an agent — a combination of conditions that correlates with a measurable outcome. Not an opinion; a data-backed finding with lift, sample size, and confidence.Why it exists: Patterns are PLM's highest-value output. \"Zone A + fleet >10 + vehicle age >7 ","PatternMember":"What it is: A link between a Pattern and a specific entity (policy, claim, submission) that is part of the pattern. The drill-down data.Why it exists: When the actuary sees \"48 policies match this pattern,\" they need to click and see the actual 48 policies — their loss ratios, their claims, their br","Recommendation":"What it is: A structured suggestion produced by an agent following Level Two discipline. Concrete action + explicit reasoning + acknowledgment of unseen factors.Why it exists: This is where the category boundary (\"PLM provides insight, the human decides\") is enforced structurally. A Recommendation i","ProvenanceNode":"What it is: A first-class record of how a piece of knowledge was produced. Created every time the system classifies a document, extracts a signal, resolves a version, or produces an agent output.Why it exists: This is PLM's auditability foundation. The foundational document commits to \"provenance as","AuditEntry":"What it is: A record of a significant action performed by a human or system in PLM. The audit trail for every decision, change, and access.Why it exists: While ProvenanceNode tracks AI/system knowledge production, AuditEntry tracks human actions: who bound a policy, who adjusted a reserve, who appro","ReviewCase":"What it is: An item in the review queue requiring human validation. Created when the pipeline produces a low-confidence classification, signal, or resolution.Why it exists: The review queue (§3.3) is the quality gate between the pipeline and the graph-ready state. When confidence is below threshold,","EvidencePackage":"What it is: An assembled collection of evidence for a specific decision, claim, or regulatory response. The materialization of Query 3.1.Why it exists: When the Superfinanciera asks \"show us the evidence for this claim,\" or when the CUO asks \"what was the basis for this bind decision,\" the EvidenceP","RegulatorRequest":"What it is: A formal inquiry or request from a regulatory authority that requires a response from the carrier.Why it exists: In LATAM insurance, regulatory inquiries are frequent and consequential. The Superfinanciera (Colombia), CNSF (Mexico), SUSEP (Brazil) can request evidence about any aspect of","RetentionSchedule":"What it is: A rule defining how long specific document types must be retained in a specific jurisdiction.Why it exists: Insurance regulations vary by country and by document type. Colombian law requires claim documents to be retained for 10 years. Mexican law may differ. When PLM considers archiving"}};
+const COLORS = {party:'#7c3aed',product:'#2563eb',container:'#0891b2',quote:'#0d9488',
+  policy:'#16a34a',claims:'#dc2626',documents:'#d97706',intelligence:'#db2777',compliance:'#4f46e5'};
+const V = window.QubruGraphValidator;
+const clone = x => JSON.parse(JSON.stringify(x));
+const ORIGINAL = clone(BOOT);
+
+let E, R, DOMAINS, MEANING, FINDINGS = [], current = null, detailTab = 'rels';
+function load(src){ E = clone(src.E); R = clone(src.R); DOMAINS = clone(src.DOMAINS); MEANING = src.MEANING || {}; }
+load(BOOT);
+
+function validate(){ FINDINGS = V.validateGraph({E, R, DOMAINS}); }
+const SEV = {ERROR:'err', WARN:'warn', INFO:'info'};
+const worst = list => list.some(f=>f.severity==='ERROR') ? 'err'
+  : list.some(f=>f.severity==='WARN') ? 'warn'
+  : list.some(f=>f.severity==='INFO') ? 'info' : 'ok';
+
+// ---------- render ----------
+function renderSummary(){
+  const c = FINDINGS.reduce((m,f)=>((m[f.severity]=(m[f.severity]||0)+1),m),{});
+  const fixable = FINDINGS.filter(f=>f.fix).length;
+  document.getElementById('summary').innerHTML =
+    '<span class="chip err">'+(c.ERROR||0)+' errors</span>'+
+    '<span class="chip warn">'+(c.WARN||0)+' warnings</span>'+
+    '<span class="chip info">'+(c.INFO||0)+' info</span>'+
+    (Object.keys(c).length? '' : '<span class="chip ok">clean</span>')+
+    '<span class="note">'+E.length+' entities · '+R.length+' relationships · '+fixable+' one-click fixable</span>';
+}
+function renderCards(){
+  const root = document.getElementById('cards'); root.innerHTML='';
+  DOMAINS.forEach(d=>{
+    const ents = E.filter(e=>e[1]===d.key); if(!ents.length) return;
+    const sec = document.createElement('div'); sec.className='domain';
+    sec.innerHTML = '<h2><span class="tag" style="background:'+(COLORS[d.key]||'#999')+'"></span>'+d.name+' <span class="cnt">· '+ents.length+'</span></h2>';
+    const g = document.createElement('div'); g.className='grid';
+    ents.forEach(e=>{
+      const name=e[0];
+      const fs = V.findingsForNode(FINDINGS, name);
+      const w = worst(fs);
+      const card=document.createElement('div'); card.className='card'; card.style.setProperty('--c', COLORS[d.key]||'#999');
+      const rows = e[2].map(a=>{
+        const pill = a[2]==='pk'?'<span class="pill pk">PK</span>':a[2]==='fk'?'<span class="pill fk">FK</span>':'';
+        return '<div class="attr"><span class="nm">'+a[0]+'</span>'+pill+'<span class="ty">'+a[1]+'</span></div>';
+      }).join('');
+      const badge = fs.length? '<span class="badge '+w+'">'+fs.length+'</span>' : '<span class="badge ok">✓</span>';
+      card.innerHTML='<div class="top"><b>'+name+'</b>'+badge+'</div><div class="fields">'+rows+'</div>';
+      card.onclick=()=>openDetail(name);
+      g.appendChild(card);
+    });
+    sec.appendChild(g); root.appendChild(sec);
+  });
+}
+function relsFor(name){
+  return R.filter(r=>r[0]===name||r[2]===name).map(r=>{
+    const out=r[0]===name; return {dir:out?'→':'←', partner:out?r[2]:r[0], verb:r[1], meaning:r[3]||''};
+  });
+}
+function fixLabel(fix){
+  switch(fix.kind){
+    case 'reverseEdge': return 'Reverse edge';
+    case 'addEdge': return 'Add edge';
+    case 'addFK': return 'Add FK ' + fix.field;
+    case 'setType': return 'Change to ' + fix.type;
+    case 'dedupeEdge': return 'Remove duplicate';
+    case 'addFields': return 'Add ' + fix.fields.map(f=>f.name).join(', ');
+    case 'addPK': return 'Add PK ' + fix.field;
+    default: return 'Fix';
+  }
+}
+function renderDetail(){
+  if(!current) return;
+  const fs = V.findingsForNode(FINDINGS, current);
+  const rels = relsFor(current);
+  const errs = fs.filter(f=>f.severity==='ERROR').length, warns = fs.filter(f=>f.severity==='WARN').length, infos = fs.filter(f=>f.severity==='INFO').length;
+  let body;
+  if(detailTab==='rels'){
+    body = rels.length ? rels.map(r=>
+      '<div class="rel"><div class="r1"><span class="dir">'+r.dir+'</span><span class="partner">'+r.partner+'</span><span class="verb">'+r.verb+'</span></div><div class="meaning">'+r.meaning+'</div></div>'
+    ).join('') : '<div class="empty">No relationships.</div>';
+  } else {
+    body = fs.length ? fs.map((f,i)=>{
+      const act = f.fix
+        ? '<div class="act"><button class="fix" data-i="'+i+'">🔧 '+fixLabel(f.fix)+'</button></div>'
+        : '<div class="act"><span class="manual">needs a manual / design decision — no safe auto-fix</span></div>';
+      return '<div class="prob"><span class="sev '+SEV[f.severity]+'">'+f.severity+'</span><div class="body">'+
+        '<div class="title">'+f.title+'</div><div class="det">'+f.detail+'</div>'+
+        '<div class="rule">'+f.rule+'</div>'+act+'</div></div>';
+    }).join('') : '<div class="empty">✅ No problems on this entity.</div>';
+  }
+  document.getElementById('detail').innerHTML=
+    '<div class="dt-head"><h3>'+current+'</h3><button class="x" id="dtx">×</button></div>'+
+    '<div class="dt-mean">'+(MEANING[current]||'')+'</div>'+
+    '<div class="tabs">'+
+      '<button data-tab="rels" class="'+(detailTab==='rels'?'active':'')+'">Relationships ('+rels.length+')</button>'+
+      '<button data-tab="problems" class="'+(detailTab==='problems'?'active':'')+'">Problems ('+fs.length+')</button>'+
+    '</div><div class="tabbody">'+body+'</div>';
+  document.getElementById('dtx').onclick=closeDetail;
+  document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>{detailTab=b.dataset.tab;renderDetail();});
+  document.querySelectorAll('.prob .fix').forEach(b=>b.onclick=()=>{
+    const f = fs[+b.dataset.i]; applyFix(f.fix); detailTab='problems'; renderAll(); toast('Fixed: '+f.title);
+  });
+}
+function openDetail(name){ current=name; detailTab='rels'; document.getElementById('overlay').hidden=false; renderDetail(); }
+function closeDetail(){ document.getElementById('overlay').hidden=true; current=null; }
+function renderAll(){ validate(); renderSummary(); renderCards(); if(current) renderDetail(); }
+
+// ---------- fixers (deterministic, mutate E / R in place) ----------
+const findEnt = n => E.find(e=>e[0]===n);
+const hasField = (e,n) => e[2].some(a=>a[0]===n);
+function insertField(e, attr){ const i=e[2].findIndex(a=>a[0]==='created_at'); if(i>=0) e[2].splice(i,0,attr); else e[2].push(attr); }
+function applyFix(fix){
+  if(!fix) return;
+  if(fix.kind==='reverseEdge'){
+    const [f,v,t]=fix.rel; const i=R.findIndex(r=>r[0]===f&&r[1]===v&&r[2]===t);
+    if(i>=0){ const r=R[i]; R[i]=[t,v,f,r[3]||'',r[4]||'doc']; }
+  } else if(fix.kind==='dedupeEdge'){
+    const [f,v,t]=fix.rel; let kept=false;
+    for(let i=R.length-1;i>=0;i--){ if(R[i][0]===f&&R[i][1]===v&&R[i][2]===t){ if(kept) R.splice(i,1); else kept=true; } }
+  } else if(fix.kind==='addEdge'){
+    if(!R.some(r=>r[0]===fix.from&&r[1]===fix.verb&&r[2]===fix.to))
+      R.push([fix.from,fix.verb,fix.to,'Added to back FK '+fix.field,'doc']);
+  } else if(fix.kind==='addFK'){
+    const e=findEnt(fix.entity); if(e&&!hasField(e,fix.field)) insertField(e,[fix.field,'uuid','fk']);
+  } else if(fix.kind==='setType'){
+    const e=findEnt(fix.entity); if(e){ const a=e[2].find(x=>x[0]===fix.field); if(a) a[1]=fix.type; }
+  } else if(fix.kind==='addFields'){
+    const e=findEnt(fix.entity); if(e) fix.fields.forEach(fl=>{ if(!hasField(e,fl.name)) insertField(e,[fl.name,fl.type]); });
+  } else if(fix.kind==='addPK'){
+    const e=findEnt(fix.entity); if(e&&!hasField(e,fix.field)) e[2].unshift([fix.field,'uuid','pk']);
+  }
+}
+function applyAll(){
+  const order={addPK:0,setType:1,addFields:2,reverseEdge:3,dedupeEdge:4,addEdge:5,addFK:6};
+  const fixes = FINDINGS.filter(f=>f.fix).map(f=>f.fix).sort((a,b)=>order[a.kind]-order[b.kind]);
+  const n = fixes.length; fixes.forEach(applyFix); renderAll(); toast('Applied '+n+' fixes');
+}
+
+// ---------- export / misc ----------
+function download(name, text, type){
+  const blob=new Blob([text],{type:type||'application/json'}); const url=URL.createObjectURL(blob);
+  const a=document.createElement('a'); a.href=url; a.download=name; a.click(); URL.revokeObjectURL(url);
+}
+function exportModel(){ download('qubru_data_model_v3.fixed.json', JSON.stringify({E,R,DOMAINS},null,2)); toast('Model exported'); }
+function exportReport(){ download('qubru_v3_validation_report.json', JSON.stringify({counts:FINDINGS.reduce((m,f)=>((m[f.severity]=(m[f.severity]||0)+1),m),{}),findings:FINDINGS},null,2)); toast('Report exported'); }
+function reset(){ load(ORIGINAL); current=null; document.getElementById('overlay').hidden=true; renderAll(); toast('Reset to original model'); }
+let toastT;
+function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove('show'),1800); }
+
+document.getElementById('btnValidate').onclick=()=>{ renderAll(); toast('Validation re-run'); };
+document.getElementById('btnFixAll').onclick=applyAll;
+document.getElementById('btnExport').onclick=exportModel;
+document.getElementById('btnReport').onclick=exportReport;
+document.getElementById('btnReset').onclick=reset;
+document.getElementById('overlay').onclick=e=>{ if(e.target.id==='overlay') closeDetail(); };
+
+renderAll();
+</script>
+</body>
+</html>
